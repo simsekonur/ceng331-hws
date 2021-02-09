@@ -1,0 +1,67 @@
+#   Onur ŞİMŞEK
+#   e2264679
+##########################################
+# The changes that you will see in the memory 
+# are related to stack not our elements.
+#########################################
+
+# stack grows upwards, so leave some space
+.pos 0x300 # bu hocanin degerleri  
+stack:
+
+# Execution begins at address 0
+    .pos 0
+    irmovq stack, %rsp      # Set up stack pointer
+    call main               # Execute main program
+    halt                    # Terminate program
+
+# Sample linked list provided by teacher
+# There are 5 elements 
+.pos 0x100
+ele0:
+.quad 0x0000a
+.quad ele1
+ele1:
+.quad 0x000b0
+.quad ele2
+ele2:
+.quad 0x00c00
+.quad ele3
+ele3:
+.quad 0x0d000
+.quad ele4
+ele4:
+.quad 0xe0000
+.quad 0
+
+main:
+    irmovq ele0, %rdi #head is rdi
+    irmovq $0, %rax
+    irmovq $8, %r8 # we will use this 8
+    irmovq $0, %r11
+    call rrev
+    ret
+
+rrev: 
+    andq %rdi,%rdi #check whether we hit a null or not
+    je return    # jump if we did not hit null
+    irmovq $8 , %rsi   
+    addq %rdi,%rsi  # rsi = &(head->next)
+    mrmovq (%rsi), %r9 # r9 = head->next
+    andq %r9,%r9
+    je return
+    addq %r8, %r9 # r9 = &(head->next->next)
+    pushq %rsi # not as a second argument in this program
+    pushq %r9 
+    pushq %rdi # the first argument is ready for the function
+    mrmovq (%rsi), %rdi
+    call rrev
+    popq %rdi
+    popq %r9
+    popq %rsi
+    rmmovq %rdi, (%r9) # head->next->next = head
+    rmmovq %r11, (%rsi) #head->next = NULL
+    ret
+return:
+    addq %rdi, %rax # return value only initialized once
+    ret

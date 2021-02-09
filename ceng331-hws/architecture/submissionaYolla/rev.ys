@@ -1,0 +1,53 @@
+#   Onur ŞİMŞEK
+#   e2264679
+
+# Execution begins at address 0
+    .pos 0
+    irmovq stack, %rsp      # Set up stack pointer
+    call main               # Execute main program
+    halt                    # Terminate program
+
+# Sample linked list provided by teacher
+# There are 5 elements 
+.pos 0x100
+ele0:
+.quad 0x0000a
+.quad ele1
+ele1:
+.quad 0x000b0
+.quad ele2
+ele2:
+.quad 0x00c00
+.quad ele3
+ele3:
+.quad 0x0d000
+.quad ele4
+ele4:
+.quad 0xe0000
+.quad 0
+
+# stack grows upwards, so leave some space
+.pos 0x300 # bu hocanin degerleri  
+stack:
+
+main:
+    irmovq ele0, %rdi #head is rdi
+    call rev  # call the function 
+    ret
+rev: 
+    irmovq 0x0, %rax #prev is rax
+    jmp test
+loop:
+    irmovq $8 , %rsi   
+    addq %rdi,%rsi  # to go the next element in the linked list
+    mrmovq (%rsi), %r9 
+    rmmovq %rax ,(%rsi)
+    irmovq $0, %rax # put zero
+    addq %rdi,%rax # then add 
+    irmovq $0, %rdi # put zero 
+    addq %r9,%rdi # then add 
+test:
+    andq %rdi,%rdi #check whether we hit a null or not
+    jne loop    # jump if we did not hit null
+    ret 
+

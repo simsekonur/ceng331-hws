@@ -1,0 +1,240 @@
+#/* $begin ncopy-ys */
+##################################################################
+# ncopy.ys - Copy a src block of len words to dst.
+# Return the number of positive words (>0) contained in src.
+#
+###################################################################
+#	e2264679 Onur ŞİMŞEK
+###################################################################
+# 	Below you can find a step by step description of what I have done to decrase the score.
+#   I will not talk about what I have obtained at the end, but rather talk about step by step 
+#   improvement up to the final point so that you can have an idea about the process.
+#	First of all, I played with the original code to have good basis. I removed all the not needed
+#	operations and I made use of iaddq, which is provided, in my implementation. I played with the 
+#   line orders to remove load-use hazard. At the end of these changes, I obtained 613 cycles in the 
+#   best one and stopped playing with the original code. 
+#   Then, I implement loop unrolling with 2 and 4 and after this I obtained 424 cycles in the best 
+#   benchmark test. Almost 2/3 of the initial improvement.
+#   The final change that I did was difficult to code for me that takes many time, but to improve speed 
+#   I implement this. The idea was the following :
+#	To check whether an element is 0/negative or positive, I haved used andq. For one element, one 
+#   andq is used and in each loop, I checked 4 elements. That is 4 checking will be performed for one loop.
+#   Is there a way to decrase these conditional check?
+#   If I had used xorq for the same purposes, the number of checking would decrase, so I have tried 
+#   this. After this changes my grade was around 58.  
+#   Then I do one more change to increase speed. I have recognized that size 1 takes much time compared to 
+#   other sizes. So, I need a little improvement, and I think that this could be the solution. So, I
+#	developed a special case for size 1. It had increased the speed of size 1, however this time the other 
+#   guys had decreased. Yes I gained from size 1, but when compared with other, it will not do something
+#	more. I have returned to my previous implementation again because I am now also have a trouble in byte,
+#   it is 990 although I decrease it from 1016. My new changes did not give anything that my previous one gave.
+#	And actually I could not do more. In my computer, I am getting between 55 and 59 over 60 grade.
+#	It is mostly above 58 and it hits 59 just one time. Oh I saw 59.1 as a result of order changes right now. 
+#   I need just a little more changes.
+#   
+##################################################################
+##################################################################
+# Do not modify this portion
+# Function prologue.
+# %rdi = src, %rsi = dst, %rdx = len
+ncopy:
+
+##################################################################
+# You can modify this portion
+	# Loop header
+	xorq %rax,%rax		  
+	andq %rdx,%rdx	
+	#	je size1Case
+	#	xorq %rcx,%rdx	
+	#	jg IfModIsZero		  
+	#	ret
+	#trying to handle size 1 case only 
+	#size1Case:
+	#	mrmovq (%rdi),%r10
+	#	andq %r10,%r10
+	#	rmmovq %r10,(%rsi)
+	#	jg size1_pos
+	#	ret	
+	#size1_pos:
+	#	rrmovq %rcx,%rax
+	#	ret 	  
+	jg CheckModAndAssignRegisters		  
+	ret
+	
+############### MOD CHECK PART ###############
+CheckModAndAssignRegisters:
+	irmovq $1, %rcx
+	irmovq $2, %r8
+	irmovq $3, %r9
+
+IsModEqualsZero:
+	andq %rdx, %r9            
+	je Loop                   
+
+IsModEqualsOne:
+	andq %rdx, %r8
+	je M1
+
+IsModEqualsTwo:
+	andq %rdx, %rcx
+	je M2
+
+#before loop these will be checked
+#branch according to the value of mod4
+
+#If modula over 4 is 3, branch here 
+M3:
+	mrmovq (%rdi), %r11
+	mrmovq 0x8(%rdi), %r12
+	mrmovq 0x10(%rdi), %r13
+	rmmovq %r11, (%rsi)
+	rmmovq %r12, 0x8(%rsi)
+	rmmovq %r13, 0x10(%rsi)
+	iaddq $24, %rdi
+	iaddq $24, %rsi
+	xorq %r12, %r13
+	jl P1N1InM3
+	andq %r12, %r12
+	jg L23
+	andq %r11, %r11
+	jg P1N2InM3
+	iaddq $-3, %rdx
+	jg Loop
+	ret
+
+P1N1InM3:
+	andq %r11, %r11
+	jg P2N1InM3
+P1N2InM3:
+	iaddq $1, %rax # add 1 to return value 
+	iaddq $-3, %rdx # sub 3 
+	jg Loop
+	ret
+L23:
+	andq %r11, %r11
+	jg L33
+P2N1InM3:
+	iaddq $2, %rax
+	iaddq $-3, %rdx
+	jg Loop
+	ret
+
+L33:
+	iaddq $3, %rax
+	iaddq $-4, %rdx
+	jg Loop
+	ret
+#If modula over 4 is 2, branch here 
+M2:
+	mrmovq (%rdi), %r11
+	mrmovq 0x8(%rdi), %r12
+	rmmovq %r11, (%rsi)
+	rmmovq %r12, 0x8(%rsi)
+	iaddq $16, %rsi
+	iaddq $16, %rdi
+	xorq %r11, %r12
+	jl P1N1InM2
+	andq %r11, %r11
+	jg L22
+	iaddq $-2, %rdx
+	jg Loop
+	ret
+P1N1InM2:
+	iaddq $1, %rax
+	iaddq $-2, %rdx
+	jg Loop
+	ret
+
+L22:
+	iaddq $2, %rax
+	iaddq $-2, %rdx
+	jg Loop
+	ret
+#If modula over 4 is 1, branch here 
+M1:
+	mrmovq (%rdi), %r11       
+	iaddq $8, %rdi            
+	rmmovq %r11, (%rsi)       
+	iaddq $8, %rsi
+	andq %r11, %r11
+	jg L11
+	iaddq $-1, %rdx
+	jg Loop
+	ret
+L11:
+	iaddq $1, %rax
+	iaddq $-1, %rdx
+	jg Loop
+	ret
+#Loop part starts here
+Loop:
+	mrmovq (%rdi), %r10	  
+	mrmovq 0x8(%rdi), %r11   
+	mrmovq 0x10(%rdi), %r12
+	mrmovq 0x18(%rdi), %r13         
+	rmmovq %r10, (%rsi)	  
+	rmmovq %r11, 0x8(%rsi)    
+	rmmovq %r12, 0x10(%rsi)
+	rmmovq %r13, 0x18(%rsi)
+	iaddq $32, %rdi           
+	iaddq $32, %rsi           
+DancingAfterLoop:
+	xorq %r10, %r13		  
+	jl OPON		  
+	xorq %r11, %r12           
+	jl L11_2
+	andq %r10, %r10
+	jg Label2
+	andq %r11, %r11
+	jg TPTN
+	iaddq $-4, %rdx
+	jg Loop
+	ret
+#one poistive one negative
+OPON:
+	xorq %r11, %r12
+	jl TPTN
+	andq %r11, %r11
+	jg ThreePosOneNeg
+OnePosThreeNeg:
+	iaddq $1, %rax
+	iaddq $-4, %rdx
+	jg Loop
+	ret
+L11_2:
+	andq %r10, %r10
+	jg ThreePosOneNeg
+L13_2:
+	iaddq $1, %rax
+	iaddq $-4, %rdx
+	jg Loop
+	ret
+Label2:
+	andq %r11, %r11
+	jg Label4
+#two positive two negative
+TPTN:
+	iaddq $2, %rax
+	iaddq $-4, %rdx
+	jg Loop
+	ret
+ThreePosOneNeg:
+	iaddq $3, %rax
+	iaddq $-4, %rdx
+	jg Loop
+	ret
+Label4:
+	iaddq $4, %rax
+	iaddq $-4, %rdx
+	jg Loop
+	ret
+
+##################################################################
+# Do not modify the following section of code
+# Function epilogue.
+Done:
+	ret
+##################################################################
+# Keep the following label at the end of your function
+End:
+#/* $end ncopy-ys */
